@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: shl-assessment-service
+    env: python
+    repo: https://github.com/shiva9198/shl-assessment-recommendation.git
+    branch: main
+    buildCommand: pip install -r requirements.txt
+    startCommand: python main.py
+    plan: free
+    envVars:
+      - key: OPENROUTER_API_KEY
+        sync: false
