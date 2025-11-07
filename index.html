@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SHL Assessment Recommender</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            display: grid;
+            place-items: center;
+            min-height: 95vh;
+            background-color: #f4f7f6;
+            margin: 0;
+        }
+        #app-container {
+            width: 100%;
+            max-width: 700px;
+            background: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
+            padding: 32px;
+            box-sizing: border-box;
+        }
+        h1 {
+            color: #0d1b2a;
+            text-align: center;
+            margin-top: 0;
+        }
+        textarea {
+            width: 100%;
+            padding: 12px;
+            box-sizing: border-box;
+            border-radius: 8px;
+            border: 1px solid #d9d9d9;
+            font-size: 16px;
+            font-family: inherit;
+            min-height: 100px;
+            margin-bottom: 16px;
+            resize: vertical;
+        }
+        button {
+            width: 100%;
+            padding: 14px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: background-color 0.2s ease;
+        }
+        button:disabled {
+            background: #aaa;
+            cursor: not-allowed;
+        }
+        button:hover:not(:disabled) {
+            background: #0056b3;
+        }
+        #results-container {
+            margin-top: 24px;
+        }
+        .result-card {
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+            background: #fafafa;
+        }
+        .result-card h3 {
+            margin-top: 0;
+            margin-bottom: 8px;
+            color: #0056b3;
+        }
+        .result-card p {
+            margin: 4px 0;
+            font-size: 14px;
+        }
+        .meta-data {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 12px;
+        }
+        .meta-tag {
+            background: #e0e7ff;
+            color: #4338ca;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        #loading, #error {
+            text-align: center;
+            font-size: 16px;
+            margin-top: 20px;
+            display: none; /* Hidden by default */
+        }
+        #error {
+            color: #d90429;
+        }
+    </style>
+</head>
+<body>
+    <div id="app-container">
+        <h1>SHL Assessment Recommender</h1>
+        <textarea id="queryInput" placeholder="Enter a job description or query... (e.g., 'I am hiring for Java developers who can also collaborate effectively with my business teams.')"></textarea>
+        <button id="submitButton">Get Recommendations</button>
+        
+        <div id="loading">Loading...</div>
+        <div id="error"></div>
+        <div id="results-container"></div>
+    </div>
+
+    <script>
+        // Your API endpoint
+        const API_URL = 'http://127.0.0.1:8000/recommend';
+
+        const queryInput = document.getElementById('queryInput');
+        const submitButton = document.getElementById('submitButton');
+        const resultsContainer = document.getElementById('results-container');
+        const loadingIndicator = document.getElementById('loading');
+        const errorDisplay = document.getElementById('error');
+
+        submitButton.addEventListener('click', async () => {
+            const query = queryInput.value;
+            if (!query) return;
+
+            // --- 1. Set loading state ---
+            submitButton.disabled = true;
+            submitButton.textContent = 'Thinking...';
+            loadingIndicator.style.display = 'block';
+            resultsContainer.innerHTML = ''; // Clear old results
+            errorDisplay.textContent = '';
+            errorDisplay.style.display = 'none';
+
+            try {
+                // --- 2. Call the API ---
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query: query })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API error: ${response.status} ${response.statusText}`);
+                }
+
+                const data = await response.json();
+
+                // --- 3. Render the results ---
+                renderResults(data.recommended_assessments);
+
+            } catch (error) {
+                console.error('Error:', error);
+                errorDisplay.textContent = `An error occurred. Make sure the API server is running. (${error.message})`;
+                errorDisplay.style.display = 'block';
+            }
+
+            // --- 4. Reset loading state ---
+            submitButton.disabled = false;
+            submitButton.textContent = 'Get Recommendations';
+            loadingIndicator.style.display = 'none';
+        });
+
+        function renderResults(assessments) {
+            if (assessments.length === 0) {
+                resultsContainer.innerHTML = '<p>No recommendations found for this query.</p>';
+                return;
+            }
+
+            assessments.forEach(assessment => {
+                // Create the card
+                const card = document.createElement('div');
+                card.className = 'result-card';
+
+                // Format test_type array into a string
+                const testTypes = assessment.test_type.join(', ');
+
+                // Format metadata tags
+                const metaTags = `
+                    <span class="meta-tag">Duration: ${assessment.duration} min</span>
+                    <span class="meta-tag">Remote: ${assessment.remote_support}</span>
+                    <span class="meta-tag">Adaptive: ${assessment.adaptive_support}</span>
+                `;
+
+                // Set the card's content (matches the required JSON fields)
+                card.innerHTML = `
+                    <h3><a href="${assessment.url}" target="_blank">${assessment.name}</a></h3>
+                    <p>${assessment.description}</p>
+                    <p><strong>Test Types:</strong> ${testTypes}</p>
+                    <div class="meta-data">
+                        ${metaTags}
+                    </div>
+                `;
+                resultsContainer.appendChild(card);
+            });
+        }
+
+        // Add Enter key support for better UX
+        queryInput.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter' && event.ctrlKey) {
+                submitButton.click();
+            }
+        });
+    </script>
+</body>
+</html>
