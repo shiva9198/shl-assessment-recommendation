@@ -2,10 +2,9 @@ services:
   - type: web
     name: shl-assessment-service
     env: python
-    runtime: python-3.10.12
     repo: https://github.com/shiva9198/shl-assessment-recommendation.git
     branch: main
-    buildCommand: pip install --only-binary=all -r requirements.txt
+    buildCommand: pip install -r requirements.txt
     startCommand: python main.py
     plan: free
     envVars:
