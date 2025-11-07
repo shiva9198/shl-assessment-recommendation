@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SHL Assessment Recommendation System</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 10px;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .search-container {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+        .search-box {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            margin-bottom: 15px;
+        }
+        .search-btn {
+            background: #667eea;
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            width: 100%;
+        }
+        .search-btn:hover {
+            background: #5a6fd8;
+        }
+        .results {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .recommendation {
+            border: 1px solid #eee;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            transition: box-shadow 0.3s;
+        }
+        .recommendation:hover {
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        .rank {
+            font-weight: bold;
+            color: #667eea;
+            font-size: 18px;
+        }
+        .score {
+            color: #666;
+            font-size: 14px;
+        }
+        .url {
+            color: #333;
+            text-decoration: none;
+            font-family: monospace;
+            background: #f8f9fa;
+            padding: 5px 10px;
+            border-radius: 4px;
+            display: inline-block;
+            margin-top: 5px;
+        }
+        .loading {
+            text-align: center;
+            color: #666;
+            font-style: italic;
+        }
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #fcc;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        .status.healthy {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.unhealthy {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🎯 SHL Assessment Recommendation System</h1>
+        <p>AI-powered recommendation engine using vector embeddings and semantic search</p>
+        <p><strong>Model Performance:</strong> 0.5133 Mean Recall@10</p>
+    </div>
+
+    <div class="search-container">
+        <h2>Enter Assessment Requirement</h2>
+        <input type="text" id="queryInput" class="search-box" 
+               placeholder="e.g., 'Numerical reasoning assessment for graduate recruitment'"
+               value="">
+        <button onclick="searchRecommendations()" class="search-btn">
+            🔍 Get Recommendations
+        </button>
+    </div>
+
+    <div id="status" class="status"></div>
+
+    <div id="results" class="results" style="display: none;">
+        <h2>Top 10 Recommendations</h2>
+        <div id="recommendationsList"></div>
+    </div>
+
+    <script>
+        // Get API base URL (adjust for deployment)
+        const API_BASE = window.location.origin.includes('localhost') || window.location.origin.includes('127.0.0.1') 
+            ? 'http://127.0.0.1:8000' 
+            : window.location.origin;
+
+        // Check API health on page load
+        window.onload = function() {
+            checkAPIHealth();
+        };
+
+        async function checkAPIHealth() {
+            try {
+                const response = await fetch(`${API_BASE}/health`);
+                const data = await response.json();
+                
+                const statusDiv = document.getElementById('status');
+                if (response.ok && data.status === 'healthy') {
+                    statusDiv.className = 'status healthy';
+                    statusDiv.innerHTML = `✅ API Status: ${data.status} | Database: ${data.database_products} products loaded`;
+                } else {
+                    throw new Error('API unhealthy');
+                }
+            } catch (error) {
+                const statusDiv = document.getElementById('status');
+                statusDiv.className = 'status unhealthy';
+                statusDiv.innerHTML = `❌ API Status: Unable to connect to API server at ${API_BASE}`;
+            }
+        }
+
+        async function searchRecommendations() {
+            const query = document.getElementById('queryInput').value.trim();
+            
+            if (!query) {
+                alert('Please enter a query');
+                return;
+            }
+
+            const resultsDiv = document.getElementById('results');
+            const listDiv = document.getElementById('recommendationsList');
+            
+            // Show loading state
+            resultsDiv.style.display = 'block';
+            listDiv.innerHTML = '<div class="loading">🔄 Searching recommendations...</div>';
+
+            try {
+                const response = await fetch(`${API_BASE}/recommend-simple`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ query: query })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API error: ${response.status}`);
+                }
+
+                const data = await response.json();
+                displayRecommendations(data.recommendations);
+
+            } catch (error) {
+                listDiv.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+            }
+        }
+
+        function displayRecommendations(recommendations) {
+            const listDiv = document.getElementById('recommendationsList');
+            
+            if (!recommendations || recommendations.length === 0) {
+                listDiv.innerHTML = '<div class="error">No recommendations found</div>';
+                return;
+            }
+
+            let html = '';
+            recommendations.forEach((rec, index) => {
+                html += `
+                    <div class="recommendation">
+                        <div class="rank">Rank ${index + 1}</div>
+                        <div class="score">Similarity Score: ${rec.score.toFixed(4)}</div>
+                        <a href="${rec.assessment_url}" class="url" target="_blank">
+                            ${rec.assessment_url}
+                        </a>
+                    </div>
+                `;
+            });
+            
+            listDiv.innerHTML = html;
+        }
+
+        // Allow Enter key to trigger search
+        document.getElementById('queryInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                searchRecommendations();
+            }
+        });
+    </script>
+</body>
+</html>
