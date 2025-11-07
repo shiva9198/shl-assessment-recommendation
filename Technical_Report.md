@@ -107,6 +107,23 @@ This report documents the development and evaluation of an AI-powered recommenda
 **Problem:** RetrievalQA chain crashed on long job descriptions
 **Solution:** Simplified architecture with direct retrieval and metadata-based response generation
 
+### Challenge 4: Score Improvement Investigation
+**Problem:** Attempt to enhance the 0.5133 baseline performance through advanced techniques
+**Approaches Tested:**
+- Advanced keyword-semantic fusion with skill domain mapping
+- TF-IDF-based ranking with substring matching
+- Hybrid position-based scoring systems
+- Multi-factor relevance scoring (experience level, duration, skills)
+
+**Results:**
+- Keyword-only approaches: 0.1867 - 0.3589 (significantly worse)
+- Hybrid methods: 0.2444 - 0.3311 (failed to improve)
+- LLM enhancement: Blocked by API rate limits
+
+**Key Finding:** Vector embeddings using OpenAI's text-embedding-ada-002 model are essential for achieving the 0.5133 performance. Alternative ranking methods cannot replicate the semantic understanding provided by embeddings.
+
+**Solution:** Maintain the original vector similarity approach as the proven baseline, with potential for conservative keyword-based enhancements only as minor adjustments.
+
 ## Conclusion
 
 The SHL Assessment Recommendation System successfully demonstrates effective AI-powered matching between job requirements and assessment tools. The **0.5133 Mean Recall@10 score** represents strong performance across diverse query types, with particularly excellent results for technical and executive roles.
